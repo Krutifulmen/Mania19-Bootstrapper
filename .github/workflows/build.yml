@@ -13,11 +13,22 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022
     
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
+
+    - name: Install C++ ATL and MFC
+      run: |
+        $installPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+        Write-Host "Installing C++ ATL/MFC into $installPath ..."
+        $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
+        $process = Start-Process -FilePath $installer -ArgumentList "modify --installPath `"$installPath`" --add Microsoft.VisualStudio.Component.VC.ATL --add Microsoft.VisualStudio.Component.VC.ATLMFC --quiet --norestart" -Wait -PassThru
+        Write-Host "Installer finished with exit code: $($process.ExitCode)"
+        if ($process.ExitCode -ne 0 -and $process.ExitCode -ne 3010) {
+          exit $process.ExitCode
+        }
       
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v1.3
