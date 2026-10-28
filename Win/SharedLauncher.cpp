@@ -9,8 +9,8 @@
     #include "ProcessInformation.h"
 #endif
 
-#define ROBLOXREGKEY        "RobloxReg"	        // Can't use "Roblox" because it is used by the old legacy installer
-#define STUDIOQTROBLOXREG   "StudioQTRobloxReg" // Technical debt we need to make this two names globally unique and shared
+#define ROBLOXREGKEY        "ManiaReg"	        // Mania Player registry subkey
+#define STUDIOQTROBLOXREG   "StudioManiaReg"    // Mania Studio registry subkey
 
 //Pull in the win32 version Library
 #pragma comment(lib, "version.lib")
