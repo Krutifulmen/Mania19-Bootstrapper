@@ -1170,14 +1170,7 @@ void BootstrapperClient::DoInstallApp()
 
 void BootstrapperClient::installStudioLauncher(bool isUpdating)
 {
-	try
-	{
-		deployStudioBetaBootstrapper(!isUpdating || hasLegacyStudioDesktopShortcut());
-	}
-	catch (std::exception& e)
-	{
-		LOG_ENTRY1("Error while deployStudioBetaBootstrapper: %s", exceptionToString(e).c_str());
-	}
+	// Studio 2019L binaries are included directly in ManiaStudio2019L.zip package
 }
 
 void BootstrapperClient::DoUninstallApp(CRegKey &hk)
