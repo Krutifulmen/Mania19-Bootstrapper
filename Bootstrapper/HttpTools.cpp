@@ -672,17 +672,6 @@ namespace HttpTools
 			LLOG_ENTRY3(site->Logger(), "Trying WinInet for %s https://%s%s", method, host.c_str(), path.c_str());
 			return httpWinInet(site, method, host, path, input, contentType, etag, result, ignoreCancel, progress);
 		}
-		{
-			try
-			{
-				return httpBoost(site, method, host, path, input, contentType, etag, result, ignoreCancel, progress, log);
-			}
-			catch (std::exception&)
-			{
-				LLOG_ENTRY(site->Logger(), "httpBoost failed, falling back to winInet");
-				return httpWinInet(site, method, host, path, input, contentType, etag, result, ignoreCancel, progress);
-			}
-		}
 
 		return status_code;
 	}
