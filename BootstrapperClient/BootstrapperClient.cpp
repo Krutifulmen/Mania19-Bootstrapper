@@ -1083,9 +1083,8 @@ void BootstrapperClient::DeployComponents(bool isUpdating, bool commitData)
 
 	// Create folders
 	createDirectory((programDirectory() + _T("2019L")).c_str());
-	// Download files
-	files.push_back(std::pair<std::wstring, std::wstring>(_T("ManiaApp2019L.zip"), _T("2019L"))); 
-	files.push_back(std::pair<std::wstring, std::wstring>(_T("ManiaStudio2019L.zip"), _T("2019L")));
+	// Download files - ManiaApp2019L.zip contains both Player and Studio binaries and all assets
+	files.push_back(std::pair<std::wstring, std::wstring>(_T("ManiaApp2019L.zip"), _T("2019L")));
 	DoDeployComponents(files, isUpdating, commitData);
 }
 
