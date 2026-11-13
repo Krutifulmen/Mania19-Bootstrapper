@@ -164,9 +164,9 @@ namespace ManiaDiscordRPC
 
         int pId = (placeId > 0) ? placeId : 1818;
         std::string largeImg = "https://mania19.xyz/asset-thumbnail/image?assetId=" + std::to_string(pId) + "&width=512&height=512&format=png";
-        std::string smallImg = "https://mania19.xyz/logo.png";
+        std::string smallImg = "https://cdn.discordapp.com/app-icons/1561830104496209970/7a7d448cb5031927e98f07b6ad779412.png";
+        std::string siteUrl = "https://mania19.xyz";
         std::string gameUrl = "https://mania19.xyz/games/" + std::to_string(pId);
-        std::string discordUrl = "https://discord.gg/3YgpQn93s";
 
         std::ostringstream ss;
         ss << "{"
@@ -184,7 +184,7 @@ namespace ManiaDiscordRPC
            << "\"small_text\":\"Mania\""
            << "},"
            << "\"buttons\":["
-           << "{\"label\":\"Join the Discord\",\"url\":\"" << discordUrl << "\"},"
+           << "{\"label\":\"Join Mania\",\"url\":\"" << siteUrl << "\"},"
            << "{\"label\":\"View Game\",\"url\":\"" << gameUrl << "\"}"
            << "]"
            << "}},"
