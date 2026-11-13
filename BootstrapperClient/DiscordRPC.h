@@ -107,10 +107,24 @@ namespace ManiaDiscordRPC
         return INVALID_HANDLE_VALUE;
     }
 
+    inline std::string EscapeJson(const std::string& s)
+    {
+        std::string res;
+        for (char c : s)
+        {
+            if (c == '"') res += "\\\"";
+            else if (c == '\\') res += "\\\\";
+            else if (c == '\n' || c == '\r' || c == '\t') res += " ";
+            else res += c;
+        }
+        return res;
+    }
+
     inline void SetActivity(HANDLE hPipe, DWORD pid, const std::string& placeName, int userId, time_t startTime)
     {
         if (hPipe == INVALID_HANDLE_VALUE || !hPipe) return;
 
+        std::string escapedPlace = EscapeJson(placeName);
         std::ostringstream ss;
         ss << "{"
            << "\"cmd\":\"SET_ACTIVITY\","
@@ -118,7 +132,7 @@ namespace ManiaDiscordRPC
            << "\"pid\":" << pid << ","
            << "\"activity\":{"
            << "\"details\":\"Playing Mania\","
-           << "\"state\":\"" << placeName << "\","
+           << "\"state\":\"" << escapedPlace << "\","
            << "\"timestamps\":{\"start\":" << startTime << "},"
            << "\"assets\":{\"large_image\":\"mania_logo\",\"large_text\":\"Mania\"},"
            << "\"buttons\":["

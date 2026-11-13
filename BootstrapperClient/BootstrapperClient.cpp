@@ -857,7 +857,7 @@ void BootstrapperClient::StartRobloxApp(bool fromInstall)
 				}
 			}
 
-			std::wstring rpcCmd = format_string(_T("\"%s\" -rpc %d %d %d"), myExePath, pi.pi.dwProcessId, placeId, userId);
+			std::wstring rpcCmd = format_string(_T("-rpc %d %d %d"), pi.pi.dwProcessId, placeId, userId);
 			CProcessInformation rpcPi;
 			CreateProcess(myExePath, rpcCmd.c_str(), rpcPi);
 		}

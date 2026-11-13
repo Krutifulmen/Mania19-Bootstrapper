@@ -2,7 +2,7 @@
 
 This repository contains the source code for the [Mania Bootstrapper](https://mania19.xyz).
 
-We are open sourcing this project to demonstrate transparency. Some users have mistakenly labeled Mania as a **RAT (Remote Access Trojan)** this code proves that the bootstrapper is completely safe.
+We are open sourcing this project to demonstrate transparency. This code proves that the bootstrapper is completely safe.
 
 ---
 
