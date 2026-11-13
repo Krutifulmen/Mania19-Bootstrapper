@@ -11,9 +11,19 @@ namespace ManiaDiscordRPC
 {
     static const char* DISCORD_CLIENT_ID = "1561830104496209970";
 
-    inline std::string FetchPlaceNameFromApi(int placeId)
+    struct PlaceDetails
     {
-        if (placeId <= 0) return "Mania Game";
+        std::string name;
+        std::string creator;
+    };
+
+    inline PlaceDetails FetchPlaceDetails(int placeId)
+    {
+        PlaceDetails details;
+        details.name = (placeId > 0) ? ("Place #" + std::to_string(placeId)) : "Mania Game";
+        details.creator = "Mania";
+
+        if (placeId <= 0) return details;
 
         const char* hosts[] = { "mania19.xyz", "127.0.0.1" };
         for (int i = 0; i < 2; ++i)
@@ -26,7 +36,7 @@ namespace ManiaDiscordRPC
             HINTERNET hUrl = InternetOpenUrlA(hNet, url.c_str(), NULL, 0, INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE, 0);
             if (hUrl)
             {
-                char buffer[2048];
+                char buffer[4096];
                 DWORD bytesRead = 0;
                 std::string response;
                 while (InternetReadFile(hUrl, buffer, sizeof(buffer) - 1, &bytesRead) && bytesRead > 0)
@@ -48,11 +58,35 @@ namespace ManiaDiscordRPC
                         size_t q2 = response.find("\"", q1 + 1);
                         if (q2 != std::string::npos)
                         {
-                            std::string name = response.substr(q1 + 1, q2 - q1 - 1);
-                            if (!name.empty()) return name;
+                            std::string parsedName = response.substr(q1 + 1, q2 - q1 - 1);
+                            if (!parsedName.empty()) details.name = parsedName;
                         }
                     }
                 }
+
+                // Parse "Creator":{...,"Name":"..."} from JSON
+                size_t cPos = response.find("\"Creator\":");
+                if (cPos == std::string::npos) cPos = response.find("\"creator\":");
+                if (cPos != std::string::npos)
+                {
+                    size_t cnPos = response.find("\"Name\":", cPos);
+                    if (cnPos == std::string::npos) cnPos = response.find("\"name\":", cPos);
+                    if (cnPos != std::string::npos)
+                    {
+                        size_t q1 = response.find("\"", cnPos + 7);
+                        if (q1 != std::string::npos)
+                        {
+                            size_t q2 = response.find("\"", q1 + 1);
+                            if (q2 != std::string::npos)
+                            {
+                                std::string parsedCreator = response.substr(q1 + 1, q2 - q1 - 1);
+                                if (!parsedCreator.empty()) details.creator = parsedCreator;
+                            }
+                        }
+                    }
+                }
+
+                return details;
             }
             else
             {
@@ -60,7 +94,7 @@ namespace ManiaDiscordRPC
             }
         }
 
-        return "Place #" + std::to_string(placeId);
+        return details;
     }
 
     inline bool SendIPC(HANDLE hPipe, uint32_t opcode, const std::string& json)
@@ -120,24 +154,38 @@ namespace ManiaDiscordRPC
         return res;
     }
 
-    inline void SetActivity(HANDLE hPipe, DWORD pid, const std::string& placeName, int userId, time_t startTime)
+    inline void SetActivity(HANDLE hPipe, DWORD pid, const std::string& placeName, const std::string& creatorName, int placeId, int userId, time_t startTime)
     {
         if (hPipe == INVALID_HANDLE_VALUE || !hPipe) return;
 
-        std::string escapedPlace = EscapeJson(placeName);
+        std::string escapedPlace = EscapeJson(placeName.empty() ? "Mania Game" : placeName);
+        std::string author = creatorName.empty() ? "Mania" : creatorName;
+        std::string escapedState = EscapeJson("by " + author);
+
+        int pId = (placeId > 0) ? placeId : 1818;
+        std::string largeImg = "https://mania19.xyz/asset-thumbnail/image?assetId=" + std::to_string(pId) + "&width=512&height=512&format=png";
+        std::string smallImg = "https://mania19.xyz/logo.png";
+        std::string gameUrl = "https://mania19.xyz/games/" + std::to_string(pId);
+        std::string discordUrl = "https://discord.gg/3YgpQn93s";
+
         std::ostringstream ss;
         ss << "{"
            << "\"cmd\":\"SET_ACTIVITY\","
            << "\"args\":{"
-           << "\"pid\":" << pid << ","
+           << "\"pid\":" << GetCurrentProcessId() << ","
            << "\"activity\":{"
-           << "\"details\":\"Playing Mania\","
-           << "\"state\":\"" << escapedPlace << "\","
+           << "\"details\":\"" << escapedPlace << "\","
+           << "\"state\":\"" << escapedState << "\","
            << "\"timestamps\":{\"start\":" << startTime << "},"
-           << "\"assets\":{\"large_image\":\"mania_logo\",\"large_text\":\"Mania\"},"
+           << "\"assets\":{"
+           << "\"large_image\":\"" << largeImg << "\","
+           << "\"large_text\":\"" << escapedPlace << "\","
+           << "\"small_image\":\"" << smallImg << "\","
+           << "\"small_text\":\"Mania\""
+           << "},"
            << "\"buttons\":["
-           << "{\"label\":\"Play Mania\",\"url\":\"http://mania19.xyz\"},"
-           << "{\"label\":\"View Profile\",\"url\":\"http://mania19.xyz/users/" << (userId > 0 ? userId : 1) << "/profile\"}"
+           << "{\"label\":\"Join the Discord\",\"url\":\"" << discordUrl << "\"},"
+           << "{\"label\":\"View Game\",\"url\":\"" << gameUrl << "\"}"
            << "]"
            << "}},"
            << "\"nonce\":\"" << startTime << "\""
@@ -150,19 +198,19 @@ namespace ManiaDiscordRPC
     {
         if (hPipe == INVALID_HANDLE_VALUE || !hPipe) return;
         std::ostringstream ss;
-        ss << "{\"cmd\":\"SET_ACTIVITY\",\"args\":{\"pid\":" << pid << ",\"activity\":null},\"nonce\":\"clear\"}";
+        ss << "{\"cmd\":\"SET_ACTIVITY\",\"args\":{\"pid\":" << GetCurrentProcessId() << ",\"activity\":null},\"nonce\":\"clear\"}";
         SendIPC(hPipe, 1, ss.str());
     }
 
     inline void MonitorGameProcess(DWORD pid, HANDLE hProcess, int placeId, int userId)
     {
-        std::string placeName = FetchPlaceNameFromApi(placeId);
+        PlaceDetails place = FetchPlaceDetails(placeId);
         HANDLE hPipe = ConnectDiscord();
         time_t startTime = time(NULL);
 
         if (hPipe != INVALID_HANDLE_VALUE)
         {
-            SetActivity(hPipe, pid, placeName, userId, startTime);
+            SetActivity(hPipe, pid, place.name, place.creator, placeId, userId, startTime);
         }
 
         while (true)
@@ -178,7 +226,7 @@ namespace ManiaDiscordRPC
                 hPipe = ConnectDiscord();
                 if (hPipe != INVALID_HANDLE_VALUE)
                 {
-                    SetActivity(hPipe, pid, placeName, userId, startTime);
+                    SetActivity(hPipe, pid, place.name, place.creator, placeId, userId, startTime);
                 }
             }
         }
