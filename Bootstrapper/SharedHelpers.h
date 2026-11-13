@@ -79,8 +79,8 @@ inline const void* to_voidptr(T value) {
 #define FIREFOXREGKEY               "@nsroblox.mania19.xyz/launcher"
 #define FIREFOXREGKEY64             "@nsroblox.mania19.xyz/launcher64"
 
-#define PLAYERLINKNAME_CUR          "Mania Player 2019L"
-#define PLAYERLINKNAMELEGACY        "Play Mania 2019L"
+#define PLAYERLINKNAME_CUR          "Mania19 Player"
+#define PLAYERLINKNAMELEGACY        "Play Mania19"
 
 // MFC Studio names
 #define STUDIOEXENAME               "ManiaStudioBeta.exe"

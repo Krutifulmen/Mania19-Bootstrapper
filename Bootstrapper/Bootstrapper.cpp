@@ -1395,7 +1395,7 @@ void Bootstrapper::writeAppSettings()
 	file << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
 	file << "<Settings>\n";
 	file << "\t<ContentFolder>content</ContentFolder>\n";
-	file << "\t<BaseUrl>https://" << (const char *) baseHost.c_str() << "</BaseUrl>\n";
+	file << "\t<BaseUrl>http://www." << (const char *) baseHost.c_str() << "</BaseUrl>\n";
 	file << "</Settings>\n";
 }
 

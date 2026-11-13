@@ -125,8 +125,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,7,0,0
- PRODUCTVERSION 1, 7, 0, 0
+ FILEVERSION 1,0,0,0
+ PRODUCTVERSION 1, 0, 0, 0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -142,12 +142,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "Mania Corporation"
-            VALUE "FileDescription", "Mania"
-            VALUE "FileVersion", "1, 7, 0, 0"
+            VALUE "FileDescription", "Mania19 Player"
+            VALUE "FileVersion", "1, 0, 0, 0"
             VALUE "LegalCopyright", "(C) 2026 Mania Corporation.  All rights reserved."
             VALUE "OriginalFilename", "ManiaPlayerLauncher.exe"
-            VALUE "ProductName", "Mania Bootstrapper"
-            VALUE "ProductVersion", "1, 7, 0, 0"
+            VALUE "ProductName", "Mania19 Player"
+            VALUE "ProductVersion", "1, 0, 0, 0"
         END
     END
     BLOCK "VarFileInfo"
@@ -184,7 +184,7 @@ STRINGTABLE
 BEGIN
     IDS_INSTALLHOST         "setup.mania19.xyz"
     IDS_BASEHOST            "www.mania19.xyz"
-    IDS_SUCCESS1            "Mania 2019L IS SUCCESSFULLY INSTALLED!"
+    IDS_SUCCESS1            "Mania19 Player IS SUCCESSFULLY INSTALLED!"
     IDS_SUCCESS2            "Just click the ""Play"" button on any game to join the action!"
     IDS_STUDIO_SUCCESS1     "Mania Studio 2019L IS SUCCESSFULLY INSTALLED!"
     IDS_STUDIO_SUCCESS2     "Click ""Launch Studio"" to make your new game!"

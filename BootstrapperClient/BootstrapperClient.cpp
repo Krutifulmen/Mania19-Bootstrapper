@@ -22,6 +22,7 @@
 #include "ClientProgressDialog.h"
 #include "RobloxServicesTools.h"
 #include <VersionHelpers.h>
+#include "DiscordRPC.h"
 
 static const TCHAR* BootstrapperFileName    = _T("ManiaPlayerLauncher.exe");
 static const TCHAR* RobloxAppFileName		= _T(PLAYEREXENAME);
@@ -617,6 +618,24 @@ bool BootstrapperClient::ProcessProtocolHandlerArgs(const std::map<std::wstring,
 
 bool BootstrapperClient::ProcessArg(wchar_t** args, int &pos, int count)
 {
+	if (CAtlModule::WordCmpI(args[pos], _T("-rpc")) == 0)
+	{
+		DWORD targetPid = 0;
+		if (++pos < count) targetPid = (DWORD)_wtoi(args[pos]);
+		int placeId = 1818;
+		if (++pos < count) placeId = _wtoi(args[pos]);
+		int userId = 1;
+		if (++pos < count) userId = _wtoi(args[pos]);
+
+		HANDLE hProc = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_INFORMATION, FALSE, targetPid);
+		if (hProc)
+		{
+			ManiaDiscordRPC::MonitorGameProcess(targetPid, hProc, placeId, userId);
+		}
+		::ExitProcess(0);
+		return true;
+	}
+
 	if (CAtlModule::WordCmpI(args[pos], _T("-play"))==0)
 	{
 		LOG_ENTRY("BootstrapperClient::ProcessArg - started");
@@ -804,6 +823,45 @@ void BootstrapperClient::StartRobloxApp(bool fromInstall)
 
 		LOG_ENTRY("Starting windows player (beta)");
 		CreateProcess(launchPath.c_str(), startArgs.c_str(), pi);
+
+		// Start native Discord Rich Presence in background (dynamic place lookup via API)
+		try
+		{
+			TCHAR myExePath[MAX_PATH];
+			::GetModuleFileName(NULL, myExePath, MAX_PATH);
+
+			int placeId = 1818;
+			if (playArgs)
+			{
+				size_t pPos = playArgs->script.find("placeId=");
+				if (pPos != std::string::npos)
+				{
+					int parsed = atoi(playArgs->script.c_str() + pPos + 8);
+					if (parsed > 0) placeId = parsed;
+				}
+			}
+
+			int userId = 1;
+			if (playArgs && !playArgs->authTicket.empty())
+			{
+				int parsedUid = atoi(playArgs->authTicket.c_str());
+				if (parsedUid > 0) userId = parsedUid;
+				else
+				{
+					size_t uPos = playArgs->authTicket.find("user_");
+					if (uPos != std::string::npos)
+					{
+						int parsedU = atoi(playArgs->authTicket.c_str() + uPos + 5);
+						if (parsedU > 0) userId = parsedU;
+					}
+				}
+			}
+
+			std::wstring rpcCmd = format_string(_T("\"%s\" -rpc %d %d %d"), myExePath, pi.pi.dwProcessId, placeId, userId);
+			CProcessInformation rpcPi;
+			CreateProcess(myExePath, rpcCmd.c_str(), rpcPi);
+		}
+		catch (...) {}
 	}
 
 	// TODO: Allow cancel of start process???
