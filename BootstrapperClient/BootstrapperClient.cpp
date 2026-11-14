@@ -825,7 +825,7 @@ void BootstrapperClient::StartRobloxApp(bool fromInstall)
 		std::wstring clientVersionPath = std::wstring(playArgs->clientVersion.begin(), playArgs->clientVersion.end());
         LOG_ENTRY("Starting in play configuration");
 		std::wstring launchPath = programDirectory() + newPath + clientVersionPath + newPath + std::wstring(RobloxAppFileName);
-		std::string localeToUse = playArgs->locale.empty() ? "en-us" : playArgs->locale;
+		std::string localeToUse = playArgs->locale.empty() ? "ru-ru" : playArgs->locale;
 		std::wstring startArgs = format_string(_T("--%S -a %S -t %S -j %S --locale %S"), gameMode.c_str(), playArgs->authUrl.c_str(), playArgs->authTicket.c_str(), playArgs->script.c_str(), localeToUse.c_str());
 		if (!playArgs->hiddenStartEventName.empty())
 		{
