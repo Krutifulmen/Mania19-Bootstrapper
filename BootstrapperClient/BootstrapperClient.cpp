@@ -607,6 +607,21 @@ bool BootstrapperClient::ProcessProtocolHandlerArgs(const std::map<std::wstring,
 			playArgs->browserTrackerId = BrowserTrackerId();
 			LOG_ENTRY1("BootstrapperClient::ProcessProtocolHandlerArgs = browserTrackerId, value = %s", playArgs->browserTrackerId.c_str());
 		}
+
+		std::wstring localeArg = getValue(argMap, _T("robloxlocale"));
+		if (localeArg.empty())
+		{
+			localeArg = getValue(argMap, _T("gamelocale"));
+		}
+		if (!localeArg.empty())
+		{
+			for (size_t i = 0; i < localeArg.length(); ++i)
+			{
+				if (localeArg[i] == L'_') localeArg[i] = L'-';
+			}
+			playArgs->locale = convert_w2s(localeArg);
+			LOG_ENTRY1("BootstrapperClient::ProcessProtocolHandlerArgs = locale, value = %s", playArgs->locale.c_str());
+		}
 	}
 	else if (launchMode == _T("unhide"))
 	{
@@ -810,7 +825,8 @@ void BootstrapperClient::StartRobloxApp(bool fromInstall)
 		std::wstring clientVersionPath = std::wstring(playArgs->clientVersion.begin(), playArgs->clientVersion.end());
         LOG_ENTRY("Starting in play configuration");
 		std::wstring launchPath = programDirectory() + newPath + clientVersionPath + newPath + std::wstring(RobloxAppFileName);
-		std::wstring startArgs = format_string(_T("--%S -a %S -t %S -j %S --locale ru-ru"), gameMode.c_str(), playArgs->authUrl.c_str(), playArgs->authTicket.c_str(), playArgs->script.c_str());
+		std::string localeToUse = playArgs->locale.empty() ? "en-us" : playArgs->locale;
+		std::wstring startArgs = format_string(_T("--%S -a %S -t %S -j %S --locale %S"), gameMode.c_str(), playArgs->authUrl.c_str(), playArgs->authTicket.c_str(), playArgs->script.c_str(), localeToUse.c_str());
 		if (!playArgs->hiddenStartEventName.empty())
 		{
 			startArgs.append(format_string(_T(" -w %S"), playArgs->hiddenStartEventName.c_str()));

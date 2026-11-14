@@ -19,6 +19,7 @@ private:
 		std::string hiddenStartEventName;
 		SharedLauncher::LaunchMode launchMode;
 		std::string browserTrackerId;
+		std::string locale;
 	};
 	std::unique_ptr<PlayArgs> playArgs;
 
