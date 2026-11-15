@@ -48,6 +48,126 @@
 // TODO - translation/localization
 using RBX::utf8_encode;
 
+static void PatchProcessLocale(HANDLE hProcess)
+{
+	HMODULE hKernel32 = ::GetModuleHandleW(L"kernel32.dll");
+	HMODULE hKernelBase = ::GetModuleHandleW(L"KernelBase.dll");
+
+	if (!hKernel32)
+		return;
+
+	// 1. Zero-argument functions returning LCID / LANGID / GEOID
+	// mov eax, 0x0409; ret (6 bytes: B8 09 04 00 00 C3)
+	const unsigned char patchLCID[6] = { 0xB8, 0x09, 0x04, 0x00, 0x00, 0xC3 };
+
+	// mov eax, 244; ret (244 = 0xF4 = United States GeoID: B8 F4 00 00 00 C3)
+	const unsigned char patchGeo[6] = { 0xB8, 0xF4, 0x00, 0x00, 0x00, 0xC3 };
+
+	struct FuncPatch {
+		const char* name;
+		const unsigned char* patch;
+		size_t size;
+	};
+
+	const FuncPatch patches[] = {
+		{ "GetUserDefaultLCID",        patchLCID, sizeof(patchLCID) },
+		{ "GetSystemDefaultLCID",      patchLCID, sizeof(patchLCID) },
+		{ "GetThreadLocale",           patchLCID, sizeof(patchLCID) },
+		{ "GetUserDefaultUILanguage",   patchLCID, sizeof(patchLCID) },
+		{ "GetSystemDefaultUILanguage", patchLCID, sizeof(patchLCID) },
+		{ "GetUserGeoID",              patchGeo,  sizeof(patchGeo) }
+	};
+
+	HMODULE modulesToPatch[2] = { hKernel32, hKernelBase };
+
+	for (HMODULE hMod : modulesToPatch)
+	{
+		if (!hMod) continue;
+		for (const auto& fp : patches)
+		{
+			FARPROC pFunc = ::GetProcAddress(hMod, fp.name);
+			if (pFunc)
+			{
+				DWORD oldProtect = 0;
+				if (::VirtualProtectEx(hProcess, (LPVOID)pFunc, fp.size, PAGE_EXECUTE_READWRITE, &oldProtect))
+				{
+					SIZE_T written = 0;
+					::WriteProcessMemory(hProcess, (LPVOID)pFunc, fp.patch, fp.size, &written);
+					::VirtualProtectEx(hProcess, (LPVOID)pFunc, fp.size, oldProtect, &oldProtect);
+					::FlushInstructionCache(hProcess, (LPVOID)pFunc, fp.size);
+				}
+			}
+		}
+	}
+
+#if !defined(_WIN64)
+	// On 32-bit (x86), hook GetLocaleInfoW and GetLocaleInfoA in kernel32.dll
+	// to overwrite the first parameter (Locale) on stack [esp+4] with 0x0409 before forwarding to KernelBase
+	if (hKernelBase)
+	{
+		const char* infoFuncs[] = { "GetLocaleInfoW", "GetLocaleInfoA" };
+		for (const char* funcName : infoFuncs)
+		{
+			FARPROC pK32 = ::GetProcAddress(hKernel32, funcName);
+			FARPROC pKB  = ::GetProcAddress(hKernelBase, funcName);
+			if (pK32 && pKB)
+			{
+				// mov dword ptr [esp+4], 0x0409  (C7 44 24 04 09 04 00 00)
+				// mov eax, pKB                   (B8 xx xx xx xx)
+				// jmp eax                        (FF E0)
+				unsigned char hookBytes[15];
+				hookBytes[0] = 0xC7; hookBytes[1] = 0x44; hookBytes[2] = 0x24; hookBytes[3] = 0x04;
+				hookBytes[4] = 0x09; hookBytes[5] = 0x04; hookBytes[6] = 0x00; hookBytes[7] = 0x00;
+				hookBytes[8] = 0xB8;
+				DWORD dwKB = (DWORD)(uintptr_t)pKB;
+				memcpy(&hookBytes[9], &dwKB, 4);
+				hookBytes[13] = 0xFF; hookBytes[14] = 0xE0;
+
+				DWORD oldProtect = 0;
+				if (::VirtualProtectEx(hProcess, (LPVOID)pK32, sizeof(hookBytes), PAGE_EXECUTE_READWRITE, &oldProtect))
+				{
+					SIZE_T written = 0;
+					::WriteProcessMemory(hProcess, (LPVOID)pK32, hookBytes, sizeof(hookBytes), &written);
+					::VirtualProtectEx(hProcess, (LPVOID)pK32, sizeof(hookBytes), oldProtect, &oldProtect);
+					::FlushInstructionCache(hProcess, (LPVOID)pK32, sizeof(hookBytes));
+				}
+			}
+		}
+	}
+#else
+	if (hKernelBase)
+	{
+		const char* infoFuncs[] = { "GetLocaleInfoW", "GetLocaleInfoA" };
+		for (const char* funcName : infoFuncs)
+		{
+			FARPROC pK32 = ::GetProcAddress(hKernel32, funcName);
+			FARPROC pKB  = ::GetProcAddress(hKernelBase, funcName);
+			if (pK32 && pKB)
+			{
+				// mov ecx, 0x0409      -> B9 09 04 00 00
+				// mov rax, pKB         -> 48 B8 [8 bytes]
+				// jmp rax              -> FF E0
+				unsigned char hookBytes[17];
+				hookBytes[0] = 0xB9; hookBytes[1] = 0x09; hookBytes[2] = 0x04; hookBytes[3] = 0x00; hookBytes[4] = 0x00;
+				hookBytes[5] = 0x48; hookBytes[6] = 0xB8;
+				uintptr_t uKB = (uintptr_t)pKB;
+				memcpy(&hookBytes[7], &uKB, 8);
+				hookBytes[15] = 0xFF; hookBytes[16] = 0xE0;
+
+				DWORD oldProtect = 0;
+				if (::VirtualProtectEx(hProcess, (LPVOID)pK32, sizeof(hookBytes), PAGE_EXECUTE_READWRITE, &oldProtect))
+				{
+					SIZE_T written = 0;
+					::WriteProcessMemory(hProcess, (LPVOID)pK32, hookBytes, sizeof(hookBytes), &written);
+					::VirtualProtectEx(hProcess, (LPVOID)pK32, sizeof(hookBytes), oldProtect, &oldProtect);
+					::FlushInstructionCache(hProcess, (LPVOID)pK32, sizeof(hookBytes));
+				}
+			}
+		}
+	}
+#endif
+}
+
 void Bootstrapper::CreateProcess(const TCHAR* module, const TCHAR* args, PROCESS_INFORMATION& pi)
 {
 	LOG_ENTRY2("Bootstrapper::CreateProcess module = %S, args = %S", module, args);
@@ -70,7 +190,45 @@ void Bootstrapper::CreateProcess(const TCHAR* module, const TCHAR* args, PROCESS
 	wcscat_s(cmd, BufSize, _T(" "));
 	wcscat_s(cmd, BufSize, args);
 
-	throwLastError(::CreateProcess(NULL, cmd, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi), format_string("CreateProcess %S failed", module));
+	bool isTargetApp = (wcsstr(module, _T("ManiaPlayerBeta")) != NULL ||
+	                    wcsstr(module, _T("RobloxPlayerBeta")) != NULL ||
+	                    wcsstr(module, _T("RobloxApp")) != NULL ||
+	                    wcsstr(module, _T("ManiaStudioBeta")) != NULL ||
+	                    wcsstr(module, _T("RobloxStudio")) != NULL);
+
+	DWORD creationFlags = NORMAL_PRIORITY_CLASS;
+	if (isTargetApp)
+	{
+		creationFlags |= CREATE_SUSPENDED;
+	}
+
+	throwLastError(::CreateProcess(NULL, cmd, NULL, NULL, FALSE, creationFlags, NULL, NULL, &si, &pi), format_string("CreateProcess %S failed", module));
+
+	if (isTargetApp)
+	{
+		::ResumeThread(pi.hThread);
+
+		// Wait briefly for ntdll to map kernel32.dll into the child address space
+		HMODULE hK32 = ::GetModuleHandleW(L"kernel32.dll");
+		if (hK32)
+		{
+			char mz[2] = {0};
+			SIZE_T bytesRead = 0;
+			for (int i = 0; i < 40; ++i)
+			{
+				if (::ReadProcessMemory(pi.hProcess, (LPCVOID)hK32, mz, 2, &bytesRead) && mz[0] == 'M' && mz[1] == 'Z')
+				{
+					break;
+				}
+				::Sleep(5);
+			}
+		}
+
+		::SuspendThread(pi.hThread);
+		PatchProcessLocale(pi.hProcess);
+		::ResumeThread(pi.hThread);
+		LOG_ENTRY("Bootstrapper::CreateProcess successfully applied US locale memory patch to client");
+	}
 }
 
 class CSimpleModule : public CAtlModule
